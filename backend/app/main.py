@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routes import extraction
+from .routes import documents, extraction, vendors
 
 app = FastAPI()
 
@@ -17,6 +17,8 @@ def health() -> dict[str, str]:
 
 
 app.include_router(extraction.router)
+app.include_router(vendors.router)
+app.include_router(documents.router)
 
 
 if STATIC_DIR.is_dir():
