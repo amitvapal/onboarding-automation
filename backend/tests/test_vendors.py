@@ -49,7 +49,7 @@ def _create_vendor(client: TestClient, **overrides) -> dict:
         "bank_account_last4": "1234",
         **overrides,
     }
-    r = client.post("/vendors", json=payload)
+    r = client.post("/api/vendors", json=payload)
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -65,9 +65,9 @@ def test_create_vendor_starts_pending(client):
 def test_list_filters_by_status(client):
     _create_vendor(client, legal_name="Pending Co")
     approved = _create_vendor(client, legal_name="Approved Co")
-    client.post(f"/vendors/{approved['id']}/approve", json={"actor": "alice"})
+    client.post(f"/api/vendors/{approved['id']}/approve", json={"actor": "alice"})
 
-    r = client.get("/vendors", params={"status": "pending"})
+    r = client.get("/api/vendors", params={"status": "pending"})
     assert r.status_code == 200
     names = [v["legal_name"] for v in r.json()]
     assert "Pending Co" in names
@@ -79,13 +79,13 @@ def test_patch_writes_audit_with_before_and_after(client):
     vid = v["id"]
 
     r = client.patch(
-        f"/vendors/{vid}",
+        f"/api/vendors/{vid}",
         json={"address": "2 Main St", "actor": "alice"},
     )
     assert r.status_code == 200, r.text
     assert r.json()["address"] == "2 Main St"
 
-    r = client.get(f"/vendors/{vid}/history")
+    r = client.get(f"/api/vendors/{vid}/history")
     assert r.status_code == 200
     rows = r.json()
     assert len(rows) == 1
@@ -103,14 +103,14 @@ def test_approve_sets_status_and_writes_audit(client):
     v = _create_vendor(client)
     vid = v["id"]
 
-    r = client.post(f"/vendors/{vid}/approve", json={"actor": "alice"})
+    r = client.post(f"/api/vendors/{vid}/approve", json={"actor": "alice"})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "approved"
     assert body["approved_by"] == "alice"
     assert body["approved_at"] is not None
 
-    r = client.get(f"/vendors/{vid}/history")
+    r = client.get(f"/api/vendors/{vid}/history")
     rows = r.json()
     assert len(rows) == 1
     row = rows[0]
@@ -127,14 +127,14 @@ def test_reject_with_reason(client):
     vid = v["id"]
 
     r = client.post(
-        f"/vendors/{vid}/reject",
+        f"/api/vendors/{vid}/reject",
         json={"actor": "alice", "reason": "EIN does not match IRS records"},
     )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "rejected"
 
-    r = client.get(f"/vendors/{vid}/history")
+    r = client.get(f"/api/vendors/{vid}/history")
     rows = r.json()
     assert len(rows) == 1
     row = rows[0]
@@ -150,7 +150,7 @@ def test_history_returns_newest_first(client):
     vid = v["id"]
 
     r = client.patch(
-        f"/vendors/{vid}",
+        f"/api/vendors/{vid}",
         json={"address": "2 Main St", "actor": "alice"},
     )
     assert r.status_code == 200, r.text
@@ -158,10 +158,10 @@ def test_history_returns_newest_first(client):
     # Cheap insurance against same-microsecond timestamps from a fast TestClient.
     time.sleep(0.01)
 
-    r = client.post(f"/vendors/{vid}/approve", json={"actor": "bob"})
+    r = client.post(f"/api/vendors/{vid}/approve", json={"actor": "bob"})
     assert r.status_code == 200, r.text
 
-    rows = client.get(f"/vendors/{vid}/history").json()
+    rows = client.get(f"/api/vendors/{vid}/history").json()
     assert [row["action"] for row in rows] == ["approved", "updated"]
     assert rows[0]["actor"] == "bob"
     assert rows[1]["actor"] == "alice"
@@ -170,12 +170,12 @@ def test_history_returns_newest_first(client):
 def test_approve_already_approved_is_409(client):
     v = _create_vendor(client)
     vid = v["id"]
-    client.post(f"/vendors/{vid}/approve", json={"actor": "alice"})
+    client.post(f"/api/vendors/{vid}/approve", json={"actor": "alice"})
 
-    r = client.post(f"/vendors/{vid}/approve", json={"actor": "alice"})
+    r = client.post(f"/api/vendors/{vid}/approve", json={"actor": "alice"})
     assert r.status_code == 409
 
 
 def test_history_for_unknown_vendor_is_404(client):
-    r = client.get("/vendors/00000000-0000-0000-0000-000000000000/history")
+    r = client.get("/api/vendors/00000000-0000-0000-0000-000000000000/history")
     assert r.status_code == 404
