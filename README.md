@@ -5,7 +5,7 @@ fields; a reviewer corrects, approves, or rejects; every change is auditable.
 
 ## Demo
 
-Live demo: <https://onboarding-app-lbsq.onrender.com/> _(placeholder — replace once Render service is live)_
+Live demo: <https://onboarding-app-lbsq.onrender.com/>
 
 ## Stack
 
